@@ -40,26 +40,6 @@ func init() {
 	rootCmd.PersistentFlags().IntVar(&rootFlags.ppm, "ppm", 0, "the frequency correction of the crystal in PPM")
 }
 
-func toCrystalFrequency(f int) si5351.Frequency {
-	switch f {
-	case 27:
-		return si5351.Crystal27MHz
-	default:
-		return si5351.Crystal25MHz
-	}
-}
-
-func toCrystalLoad(l int) si5351.CrystalLoad {
-	switch l {
-	case 6:
-		return si5351.CrystalLoad6PF
-	case 8:
-		return si5351.CrystalLoad8PF
-	default:
-		return si5351.CrystalLoad10PF
-	}
-}
-
 func runSi5351(f func(cmd *cobra.Command, args []string, device *si5351.Si5351)) func(cmd *cobra.Command, args []string) {
 	return func(cmd *cobra.Command, args []string) {
 		crystal := si5351.Crystal{BaseFrequency: toCrystalFrequency(rootFlags.crystalFreq), Load: toCrystalLoad(rootFlags.crystalLoad), CorrectionPPM: rootFlags.ppm}

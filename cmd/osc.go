@@ -2,20 +2,18 @@ package cmd
 
 import (
 	"log"
-	"strconv"
-	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/ftl/si5351/pkg/si5351"
 )
 
-var outFlags = struct {
-	out string
+var oscFlags = struct {
+	noInit bool
 }{}
 
-var outCmd = &cobra.Command{
-	Use:   "out [freq0] [freq1] [freq2] [freq3] [freq4] [freq5]",
+var oscCmd = &cobra.Command{
+	Use:   "osc [freq0] [freq1] [freq2] [freq3] [freq4] [freq5]",
 	Short: "Output the given frequencies on the outputs CLK0-CLK5 using PLL A",
 	Long: `Output the given frequencies on the outputs CLK0-CLK5 using PLL A.
 If the list of given frequencies is shorter than six entries, only the outputs with given frequencies are setup.
@@ -26,11 +24,15 @@ Example: out 10M 5M 3500k 3400k # output 10MHz, 5MHz, 3500kHz, and 3400kHz on th
 }
 
 func init() {
-	rootCmd.AddCommand(outCmd)
+	rootCmd.AddCommand(oscCmd)
+
+	oscCmd.Flags().BoolVar(&oscFlags.noInit, "noInit", false, "do not initialize the Si5351")
 }
 
 func runOut(cmd *cobra.Command, args []string, device *si5351.Si5351) {
-	device.StartSetup()
+	if !oscFlags.noInit {
+		device.StartSetup()
+	}
 
 	f, _ := device.SetupPLL(si5351.PLLA, 900*si5351.MHz)
 	log.Printf("PLLA @ %dHz", f)
@@ -52,25 +54,7 @@ func runOut(cmd *cobra.Command, args []string, device *si5351.Si5351) {
 		log.Printf("Clk%d @ %dHz", i, f)
 	}
 
-	device.FinishSetup()
-}
-
-func parseFrequency(f string) (si5351.Frequency, error) {
-	input := strings.ToLower(strings.TrimSpace(f))
-	var magnitude si5351.Frequency
-	switch {
-	case strings.HasSuffix(input, "m"):
-		magnitude = si5351.MHz
-		input = input[:len(input)-1]
-	case strings.HasSuffix(input, "k"):
-		magnitude = si5351.KHz
-		input = input[:len(input)-1]
-	default:
-		magnitude = si5351.Hz
+	if !oscFlags.noInit {
+		device.FinishSetup()
 	}
-	value, err := strconv.Atoi(input)
-	if err != nil {
-		return 0, err
-	}
-	return si5351.Frequency(value) * magnitude, nil
 }
