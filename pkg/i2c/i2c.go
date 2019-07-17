@@ -98,10 +98,18 @@ func (b *I2C) Close() error {
 
 // ReadReg reads len(p) bytes from the given register (and the following if len(p) > 1).
 func (b *I2C) ReadReg(reg uint8, p []byte) (int, error) {
-	if _, err := b.Write([]byte{reg}); err != nil {
-		return 0, err
+	buf := make([]byte, 1)
+	n := 0
+	for i := range p {
+		if _, err := b.Write([]byte{reg}); err != nil {
+			return 0, err
+		}
+		if _, err := b.Read(buf); err != nil {
+			p[i] = buf[0]
+			n++
+		}
 	}
-	return b.Read(p)
+	return n, b.err
 }
 
 // WriteReg writes the given bytes to the given register (and the following if there is more than one byte given).
