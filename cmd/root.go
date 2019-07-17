@@ -3,9 +3,10 @@ package cmd
 import (
 	"log"
 
-	"github.com/ftl/si5351/pkg/i2c"
-	"github.com/ftl/si5351/pkg/si5351"
+	"github.com/ftl/i2c"
 	"github.com/spf13/cobra"
+
+	"github.com/ftl/si5351/pkg/si5351"
 )
 
 var cfgFile string
