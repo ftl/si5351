@@ -30,6 +30,11 @@ const (
 	ClockBy128
 )
 
+// Factor returns the factor of this divider in the denominator.
+func (d ClockDivider) Factor() int {
+	return (1 << uint(d))
+}
+
 // FractionalRatio represents a fractional ratio used to configure the PLLs and the Multisynths.
 type FractionalRatio struct {
 	A            int
@@ -64,9 +69,9 @@ func (d *FractionalRatio) Multiply(base Frequency) Frequency {
 // Divide the given frequency by this ratio.
 func (d *FractionalRatio) Divide(base Frequency) Frequency {
 	if d.C == 0 {
-		return base / Frequency(d.A)
+		return base / (Frequency(d.A) * Frequency(d.ClockDivider.Factor()))
 	}
-	return Frequency(float64(base) / (float64(d.A) + float64(d.B)/float64(d.C)))
+	return Frequency(float64(base) / (float64(d.A) + (float64(d.B)/float64(d.C))*float64(d.ClockDivider.Factor())))
 }
 
 // IsInteger indicates if this divider can be used in integer mode.
@@ -103,12 +108,13 @@ func (d *FractionalRatio) WriteTo(w io.Writer) (int64, error) {
 func FindFractionalMultiplier(refFrequency, frequency Frequency) FractionalRatio {
 	const (
 		minA, maxA   = 15, 90
-		defaultDenom = 2000000
+		defaultDenom = (1 << 21) - 1 // 2000000
+		// defaultDenom = 1000000
 	)
 
 	a := int(frequency / refFrequency)
 	a = int(math.Max(minA, math.Min(float64(a), maxA)))
-	b := int(float32(frequency%refFrequency) * (float32(defaultDenom) / float32(refFrequency)))
+	b := int(float64(frequency%refFrequency) * (float64(defaultDenom) / float64(refFrequency)))
 	c := defaultDenom
 
 	return FractionalRatio{A: a, B: b, C: c}
@@ -118,12 +124,12 @@ func FindFractionalMultiplier(refFrequency, frequency Frequency) FractionalRatio
 func FindFractionalDivider(refFrequency Frequency, frequency Frequency) FractionalRatio {
 	const (
 		minA, maxA   = 6, 1800
-		defaultDenom = 2000000
+		defaultDenom = (1 << 21) - 1 // 2000000
 	)
 
 	a := int(refFrequency / frequency)
 	a = int(math.Max(minA, math.Min(float64(a), maxA)))
-	b := int(float32(refFrequency%frequency) * (float32(defaultDenom) / float32(frequency)))
+	b := int(float64(refFrequency%frequency) * (float64(defaultDenom) / float64(frequency)))
 	c := defaultDenom
 
 	return FractionalRatio{A: a, B: b, C: c}
@@ -137,7 +143,7 @@ func FindFractionalMultiplierWithIntegerDivider(refFrequency Frequency, frequenc
 		minA, maxA             = 6, 126
 	)
 
-	startPLLFreq := Frequency((float32(maxPLLFreq-minPLLFreq)/float32(maxFreq))*float32(frequency)) + minPLLFreq
+	startPLLFreq := Frequency((float64(maxPLLFreq-minPLLFreq)/float64(maxFreq))*float64(frequency)) + minPLLFreq
 
 	a := (startPLLFreq / frequency)
 	if minPLLFreq%frequency != 0 {
@@ -146,13 +152,20 @@ func FindFractionalMultiplierWithIntegerDivider(refFrequency Frequency, frequenc
 	for (a%2 == 1) || (a < minA) {
 		a++
 	}
-	if a > maxA {
-		a = maxA
+
+	clockDivider := ClockBy1
+	for a > maxA {
+		a = a >> 1
+		clockDivider++
 	}
 
-	pllFrequency := frequency * a
+	pllFrequency := frequency * a * Frequency(clockDivider.Factor())
 	multiplier = FindFractionalMultiplier(refFrequency, pllFrequency)
-	divider = FractionalRatio{A: int(a)}
+
+	divider = FractionalRatio{A: int(a), ClockDivider: clockDivider}
+	if clockDivider == ClockBy4 {
+		divider.By4 = true
+	}
 
 	return
 }

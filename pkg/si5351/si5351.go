@@ -13,9 +13,9 @@ type Si5351 struct {
 	Crystal      Crystal
 	InputDivider ClockDivider
 
-	PLL              []*PLL
-	FractionalOutput []*FractionalOutput
-	IntegerOutput    []*IntegerOutput
+	pll              []*PLL
+	fractionalOutput []*FractionalOutput
+	integerOutput    []*IntegerOutput
 
 	bus Bus
 }
@@ -33,9 +33,9 @@ type Bus interface {
 func New(crystal Crystal, bus Bus) *Si5351 {
 	return &Si5351{
 		Crystal:          crystal,
-		PLL:              loadPLLs(bus),
-		FractionalOutput: loadFractionalOutputs(bus),
-		IntegerOutput:    loadIntegerOutputs(bus),
+		pll:              loadPLLs(bus),
+		fractionalOutput: loadFractionalOutputs(bus),
+		integerOutput:    loadIntegerOutputs(bus),
 		bus:              bus,
 	}
 }
@@ -62,47 +62,99 @@ func (s *Si5351) FinishSetup() error {
 	return s.bus.Err()
 }
 
+// PLL returns the PLL with the given index.
+func (s *Si5351) PLL(pll PLLIndex) *PLL {
+	return s.pll[pll]
+}
+
+// PLLA returns PLL A.
+func (s *Si5351) PLLA() *PLL {
+	return s.pll[PLLA]
+}
+
+// PLLB returns PLL B.
+func (s *Si5351) PLLB() *PLL {
+	return s.pll[PLLB]
+}
+
+// Output returns the output with the given index.
+func (s *Si5351) Output(output OutputIndex) *Output {
+	if output <= Clk5 {
+		return &s.fractionalOutput[output].Output
+	}
+	return &s.integerOutput[output].Output
+}
+
+// Clk0 returns the output CLK0.
+func (s *Si5351) Clk0() *FractionalOutput {
+	return s.fractionalOutput[Clk0]
+}
+
+// Clk1 returns the output CLK1
+func (s *Si5351) Clk1() *FractionalOutput {
+	return s.fractionalOutput[Clk1]
+}
+
+// Clk2 returns the output CLK2
+func (s *Si5351) Clk2() *FractionalOutput {
+	return s.fractionalOutput[Clk2]
+}
+
+// Clk3 returns the output CLK3
+func (s *Si5351) Clk3() *FractionalOutput {
+	return s.fractionalOutput[Clk3]
+}
+
+// Clk4 returns the output CLK4
+func (s *Si5351) Clk4() *FractionalOutput {
+	return s.fractionalOutput[Clk4]
+}
+
+// Clk5 returns the output CLK5
+func (s *Si5351) Clk5() *FractionalOutput {
+	return s.fractionalOutput[Clk5]
+}
+
+// Clk6 returns the output CLK6
+func (s *Si5351) Clk6() *IntegerOutput {
+	return s.integerOutput[0]
+}
+
+// Clk7 returns the output CLK7
+func (s *Si5351) Clk7() *IntegerOutput {
+	return s.integerOutput[1]
+}
+
 // SetupPLLInputSource writes the input source configuration to the Si5351's register.
 func (s *Si5351) SetupPLLInputSource(clkinInputDivider ClockDivider, pllASource, pllBSource PLLInputSource) error {
 	value := byte((clkinInputDivider&0xF)<<4) |
-		byte((pllASource&1)<<s.PLL[PLLA].Register.InputSourceOffset) |
-		byte((pllBSource&1)<<s.PLL[PLLB].Register.InputSourceOffset)
+		byte((pllASource&1)<<s.PLLA().Register.InputSourceOffset) |
+		byte((pllBSource&1)<<s.PLLB().Register.InputSourceOffset)
 
 	s.bus.WriteReg(RegPLLInputSource, value)
 
 	if s.bus.Err() == nil {
 		s.InputDivider = clkinInputDivider
-		s.PLL[PLLA].InputSource = pllASource
-		s.PLL[PLLB].InputSource = pllBSource
+		s.PLLA().InputSource = pllASource
+		s.PLLB().InputSource = pllBSource
 	}
 	return s.bus.Err()
 }
 
 // SetupPLLRaw directly sets the frequency multiplier parameters for the given PLL and resets it.
 func (s *Si5351) SetupPLLRaw(pll PLLIndex, a, b, c int) error {
-	s.PLL[pll].SetupMultiplier(FractionalRatio{A: a, B: b, C: c})
-	s.PLL[pll].Reset()
-	return s.bus.Err()
-}
-
-// SetupOutputRaw directly sets the control parameters of the given output.
-func (s *Si5351) SetupOutputRaw(output OutputIndex, pll PLLIndex, invert bool, inputSource ClockInputSource, drive OutputDrive) error {
-	if int(output) < len(s.FractionalOutput) {
-		s.FractionalOutput[output].SetupControl(false, false, pll, invert, inputSource, drive)
-	} else {
-		s.IntegerOutput[int(output)-len(s.FractionalOutput)].SetupControl(false, false, pll, invert, inputSource, drive)
-	}
-
+	s.pll[pll].SetupMultiplier(FractionalRatio{A: a, B: b, C: c})
+	s.pll[pll].Reset()
 	return s.bus.Err()
 }
 
 // SetupMultisynthRaw directly sets the frequency divider and RDiv parameters for the Multisynth of the given output.
 func (s *Si5351) SetupMultisynthRaw(output OutputIndex, a, b, c int, RDiv ClockDivider) error {
-	if int(output) >= len(s.FractionalOutput) {
+	if int(output) >= len(s.fractionalOutput) {
 		return errors.New("only CLK0-CLK5 are currently supported")
 	}
 
-	s.FractionalOutput[output].SetupDivider(FractionalRatio{A: a, B: b, C: c})
+	s.fractionalOutput[output].SetupDivider(FractionalRatio{A: a, B: b, C: c})
 
 	return s.bus.Err()
 }
@@ -111,22 +163,30 @@ func (s *Si5351) SetupMultisynthRaw(output OutputIndex, a, b, c int, RDiv ClockD
 func (s *Si5351) SetupPLL(pll PLLIndex, frequency Frequency) (Frequency, error) {
 	multiplier := FindFractionalMultiplier(s.Crystal.Frequency(), frequency)
 
-	s.PLL[pll].SetupMultiplier(multiplier)
-	s.PLL[pll].Reset()
+	s.pll[pll].SetupMultiplier(multiplier)
+	s.pll[pll].Reset()
 
 	return multiplier.Multiply(s.Crystal.Frequency()), s.bus.Err()
 }
 
+// PrepareOutputs prepares the given outputs for use with the given PLL and control parameters.
+func (s *Si5351) PrepareOutputs(pll PLLIndex, invert bool, inputSource ClockInputSource, drive OutputDrive, outputs ...OutputIndex) error {
+	for _, output := range outputs {
+		s.Output(output).SetupControl(false, false, pll, invert, inputSource, drive)
+	}
+	return s.bus.Err()
+}
+
 // SetOutputFrequency sets the given output to the closest possible value of the given frequency that can be
-// generated with the PLL the output is associated with.
+// generated with the PLL the output is associated with. Set the frequency of the PLL first.
 // The method returns the effective output frequency.
 func (s *Si5351) SetOutputFrequency(output OutputIndex, frequency Frequency) (Frequency, error) {
-	if int(output) >= len(s.FractionalOutput) {
+	if int(output) >= len(s.fractionalOutput) {
 		return 0, errors.New("only CLK0-CLK5 are currently supported")
 	}
 
-	o := s.FractionalOutput[output]
-	pllFrequency := s.PLL[o.PLL].Multiplier.Multiply(s.Crystal.Frequency())
+	o := s.fractionalOutput[output]
+	pllFrequency := s.pll[o.PLL].Multiplier.Multiply(s.Crystal.Frequency())
 	divider := FindFractionalDivider(pllFrequency, frequency)
 	o.SetupDivider(divider)
 
@@ -136,12 +196,12 @@ func (s *Si5351) SetOutputFrequency(output OutputIndex, frequency Frequency) (Fr
 // SetOutputDivider sets the divider of the given output.
 // The method returns the effective output frequency.
 func (s *Si5351) SetOutputDivider(output OutputIndex, a, b, c int) (Frequency, error) {
-	if int(output) >= len(s.FractionalOutput) {
+	if int(output) >= len(s.fractionalOutput) {
 		return 0, errors.New("only CLK0-CLK5 are currently supported")
 	}
 
-	o := s.FractionalOutput[output]
-	pllFrequency := s.PLL[o.PLL].Multiplier.Multiply(s.Crystal.Frequency())
+	o := s.fractionalOutput[output]
+	pllFrequency := s.pll[o.PLL].Multiplier.Multiply(s.Crystal.Frequency())
 	divider := FractionalRatio{A: a, B: b, C: c}
 	o.SetupDivider(divider)
 
@@ -152,13 +212,13 @@ func (s *Si5351) SetOutputDivider(output OutputIndex, a, b, c int) (Frequency, e
 // of the given frequency with a quadrature signal (90° phase shifted) on the second output.
 // The method returns the effective PLL frequency and the effective output frequency.
 func (s *Si5351) SetupQuadratureOutput(pll PLLIndex, phase, quadrature OutputIndex, frequency Frequency) (Frequency, Frequency, error) {
-	if int(phase) >= len(s.FractionalOutput) || int(quadrature) >= len(s.FractionalOutput) {
+	if int(phase) >= len(s.fractionalOutput) || int(quadrature) >= len(s.fractionalOutput) {
 		return 0, 0, errors.New("only CLK0-CLK5 are currently supported")
 	}
 
-	p := s.PLL[pll]
-	i := s.FractionalOutput[phase]
-	q := s.FractionalOutput[quadrature]
+	p := s.pll[pll]
+	i := s.fractionalOutput[phase]
+	q := s.fractionalOutput[quadrature]
 
 	// Find the multiplier and an integer divider.
 	multiplier, divider := FindFractionalMultiplierWithIntegerDivider(s.Crystal.Frequency(), frequency)

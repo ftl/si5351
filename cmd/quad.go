@@ -50,8 +50,7 @@ func runQuad(cmd *cobra.Command, args []string, device *si5351.Si5351) {
 		device.StartSetup()
 	}
 
-	device.SetupOutputRaw(iOutput, pll, false, si5351.ClockInputMultisynth, drive)
-	device.SetupOutputRaw(qOutput, pll, false, si5351.ClockInputMultisynth, drive)
+	device.PrepareOutputs(pll, false, si5351.ClockInputMultisynth, drive, iOutput, qOutput)
 	device.SetupQuadratureOutput(pll, iOutput, qOutput, frequency)
 
 	if !quadFlags.noInit {

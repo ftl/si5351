@@ -30,8 +30,7 @@ func runTest(cmd *cobra.Command, args []string, device *si5351.Si5351) {
 
 	device.StartSetup()
 
-	device.SetupOutputRaw(si5351.Clk0, si5351.PLLA, false, si5351.ClockInputMultisynth, si5351.OutputDrive2mA)
-	device.SetupOutputRaw(si5351.Clk1, si5351.PLLA, false, si5351.ClockInputMultisynth, si5351.OutputDrive2mA)
+	device.PrepareOutputs(si5351.PLLA, false, si5351.ClockInputMultisynth, si5351.OutputDrive2mA, si5351.Clk0, si5351.Clk1)
 	fpll, fout, _ := device.SetupQuadratureOutput(si5351.PLLA, si5351.Clk0, si5351.Clk1, 30*si5351.MHz)
 
 	device.FinishSetup()
