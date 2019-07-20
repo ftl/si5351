@@ -9,6 +9,7 @@ import (
 )
 
 var oscFlags = struct {
+	drive  int
 	noInit bool
 }{}
 
@@ -26,10 +27,13 @@ Example: osc 10M 5M 3500k 3400k # output 10MHz, 5MHz, 3500kHz, and 3400kHz on th
 func init() {
 	rootCmd.AddCommand(oscCmd)
 
+	oscCmd.Flags().IntVar(&oscFlags.drive, "drive", 2, "the output drive strength in mA (2, 4, 6, 8)")
 	oscCmd.Flags().BoolVar(&oscFlags.noInit, "noInit", false, "do not initialize the Si5351")
 }
 
 func runOsc(cmd *cobra.Command, args []string, device *si5351.Si5351) {
+	drive := toOutputDrive(oscFlags.drive)
+
 	if !oscFlags.noInit {
 		device.StartSetup()
 	}
@@ -48,7 +52,7 @@ func runOsc(cmd *cobra.Command, args []string, device *si5351.Si5351) {
 			log.Fatal(err)
 		}
 
-		device.PrepareOutputs(si5351.PLLA, false, si5351.ClockInputMultisynth, si5351.OutputDrive2mA, output)
+		device.PrepareOutputs(si5351.PLLA, false, si5351.ClockInputMultisynth, drive, output)
 		f, _ := device.SetOutputFrequency(output, frequency)
 
 		log.Printf("Clk%d @ %dHz", i, f)
