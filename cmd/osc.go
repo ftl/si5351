@@ -59,6 +59,7 @@ func runOsc(cmd *cobra.Command, args []string, device *si5351.Si5351) {
 
 		device.PrepareOutputs(si5351.PLLA, false, si5351.ClockInputMultisynth, drive, si5351.Clk0)
 		device.Clk0().SetupDivider(divider)
+		device.Clk0().SetIntegerMode(true)
 		outputFrequency := divider.Divide(pllFrequency)
 		log.Printf("Clk0 @ %dHz: %v", outputFrequency, divider)
 	} else {

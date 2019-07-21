@@ -25,5 +25,5 @@ const (
 
 // Frequency is the corrected frequency of this Crystal.
 func (c Crystal) Frequency() Frequency {
-	return c.BaseFrequency + Frequency(float64(c.CorrectionPPM)/1000000.0*float64(c.BaseFrequency))
+	return Frequency(float64(c.BaseFrequency) + ((float64(c.CorrectionPPM) / 1000000.0) * float64(c.BaseFrequency)))
 }

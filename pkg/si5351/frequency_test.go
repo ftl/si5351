@@ -32,7 +32,7 @@ func TestFindFractionalMultiplier(t *testing.T) {
 			t.Parallel()
 			multiplier := FindFractionalMultiplier(crystal.Frequency(), frequency)
 			actual := multiplier.Multiply(crystal.Frequency())
-			assert.True(t, math.Abs(float64(frequency-actual)) < 22, "", actual, multiplier)
+			assert.True(t, math.Abs(float64(frequency-actual)) < 25, "", actual, multiplier)
 		})
 	}
 }
@@ -50,7 +50,7 @@ func TestFindFractionalDivider(t *testing.T) {
 	}
 }
 
-func _TestFindFractionalMultiplierWithIntegerDivider(t *testing.T) {
+func TestFindFractionalMultiplierWithIntegerDivider(t *testing.T) {
 	refFrequency := 25 * MHz
 	for f := 1000; f <= 150000; f += 10 {
 		frequency := Frequency(f) * KHz
@@ -58,7 +58,7 @@ func _TestFindFractionalMultiplierWithIntegerDivider(t *testing.T) {
 			t.Parallel()
 			multiplier, divider := FindFractionalMultiplierWithIntegerDivider(refFrequency, frequency)
 			actual := divider.Divide(multiplier.Multiply(refFrequency))
-			assert.True(t, math.Abs(float64(frequency-actual)) < 3, "", actual, multiplier, divider)
+			assert.True(t, math.Abs(float64(frequency-actual)) < 5, "", actual, multiplier, divider)
 		})
 	}
 }

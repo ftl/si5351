@@ -5,7 +5,7 @@ import (
 )
 
 // Frequency represents a frequency in Hz
-type Frequency int
+type Frequency uint32
 
 // Frequency multipliers
 const (
@@ -30,7 +30,7 @@ const (
 )
 
 // Factor returns the factor of this divider in the denominator.
-func (d ClockDivider) Factor() int {
+func (d ClockDivider) Factor() uint8 {
 	return (1 << uint(d))
 }
 
@@ -48,12 +48,13 @@ func (d *FractionalRatio) Encode() (p1, p2, p3 uint32) {
 	var fraction uint32
 	if d.C == 0 {
 		fraction = 0
+		p3 = 1
 	} else {
-		fraction = uint32(float64(128*d.B) / float64(d.C))
+		fraction = uint32(128.0 * (float64(d.B) / float64(d.C)))
+		p3 = d.C
 	}
 	p1 = 128*d.A + fraction - 512
 	p2 = 128*d.B - d.C*fraction
-	p3 = d.C
 	return
 }
 
@@ -70,7 +71,7 @@ func (d *FractionalRatio) Divide(base Frequency) Frequency {
 	if d.C == 0 {
 		return base / (Frequency(d.A) * Frequency(d.ClockDivider.Factor()))
 	}
-	return Frequency(float64(base) / (float64(d.A) + (float64(d.B)/float64(d.C))*float64(d.ClockDivider.Factor())))
+	return Frequency(float64(base) / ((float64(d.A) + (float64(d.B) / float64(d.C))) * float64(d.ClockDivider.Factor())))
 }
 
 // IsInteger indicates if this divider can be used in integer mode.
@@ -107,7 +108,7 @@ func (d *FractionalRatio) WriteTo(w io.Writer) (int64, error) {
 func FindFractionalMultiplier(refFrequency, frequency Frequency) FractionalRatio {
 	const (
 		minA, maxA   = 15, 90
-		defaultDenom = 1000000 // 1048575 // (1 << 21) - 1 // 2000000
+		defaultDenom = 0xFFFFF // 1048575 // (1 << 21) - 1 // 2000000
 	)
 
 	a := uint32(frequency / refFrequency)
@@ -126,7 +127,7 @@ func FindFractionalMultiplier(refFrequency, frequency Frequency) FractionalRatio
 func FindFractionalDivider(refFrequency Frequency, frequency Frequency) FractionalRatio {
 	const (
 		minA, maxA   = 6, 1800
-		defaultDenom = 1000000 // 1048575 // (1<<21) - 1 // 2000000
+		defaultDenom = 0xFFFFF // 1048575 // (1<<21) - 1 // 2000000
 	)
 
 	a := uint32(refFrequency / frequency)
@@ -149,67 +150,30 @@ func FindFractionalMultiplierWithIntegerDivider(refFrequency Frequency, frequenc
 		minA, maxA             = 6, 126
 	)
 
-	type solution struct {
-		multiplier, divider FractionalRatio
-		d                   Frequency
+	pllFrequency := minPLLFreq
+	a := (pllFrequency / frequency)
+
+	for pllFrequency%frequency != 0 {
+		a++
+		pllFrequency = frequency * a
 	}
-	solutions := []solution{}
-
-	pllFrequency := minPLLFreq + 1
-	for pllFrequency < maxPLLFreq {
-		a := (pllFrequency / frequency)
-
-		for pllFrequency%frequency != 0 {
-			a++
-			pllFrequency = frequency * a
-		}
-		for (a%2 == 1) || (a < minA) {
-			a++
-		}
-
-		clockDivider := ClockBy1
-		for a > maxA {
-			a = a >> 1
-			clockDivider++
-		}
-
-		pllFrequency = frequency * a * Frequency(clockDivider.Factor())
-		multiplier = FindFractionalMultiplier(refFrequency, pllFrequency)
-
-		divider = FractionalRatio{A: uint32(a), ClockDivider: clockDivider}
-		if clockDivider == ClockBy4 {
-			divider.By4 = true
-		}
-
-		d := delta(pllFrequency, multiplier.Multiply(refFrequency))
-		if pllFrequency < maxPLLFreq {
-			solutions = append(solutions, solution{multiplier, divider, d})
-		}
-		pllFrequency++
+	for (a%2 == 1) || (a < minA) {
+		a++
 	}
 
-	if len(solutions) == 0 {
-		multiplier = FractionalRatio{A: 24}
-		divider = FractionalRatio{A: 24}
-		return
-	}
-	currentSolution := solutions[0]
-	for _, s := range solutions {
-		if s.d < currentSolution.d {
-			currentSolution = s
-		}
+	clockDivider := ClockBy1
+	for a > maxA {
+		a = a >> 1
+		clockDivider++
 	}
 
-	multiplier = currentSolution.multiplier
-	divider = currentSolution.divider
+	pllFrequency = frequency * a * Frequency(clockDivider.Factor())
+	multiplier = FindFractionalMultiplier(refFrequency, pllFrequency)
+
+	divider = FractionalRatio{A: uint32(a), B: 0, C: 1, ClockDivider: clockDivider}
+	if clockDivider == ClockBy4 {
+		divider.By4 = true
+	}
 
 	return
-}
-
-func delta(f1, f2 Frequency) Frequency {
-	d := f1 - f2
-	if d < 0 {
-		return -1 * d
-	}
-	return d
 }
