@@ -176,6 +176,28 @@ func (o *Output) SetPowerDown(powerDown bool) error {
 	return o.bus.Err()
 }
 
+// SetIntegerMode sets the integer mode flag of the Output and writes it to the output's control register.
+func (o *Output) SetIntegerMode(integerMode bool) error {
+	value := byte(o.PLL<<5) | byte(o.InputSource<<2) | byte(o.Drive)
+	if o.PowerDown {
+		value |= (1 << 7)
+	}
+	if integerMode {
+		value |= (1 << 6)
+	}
+	if o.Invert {
+		value |= (1 << 4)
+	}
+
+	o.bus.WriteReg(o.Register.Control, value)
+
+	if o.bus.Err() == nil {
+		o.IntegerMode = integerMode
+	}
+
+	return o.bus.Err()
+}
+
 // SetPLL sets the PLL of the Output and writes it to the output's control register.
 func (o *Output) SetPLL(pll PLLIndex) error {
 	value := byte(pll<<5) | byte(o.InputSource<<2) | byte(o.Drive)

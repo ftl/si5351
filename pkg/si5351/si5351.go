@@ -142,14 +142,14 @@ func (s *Si5351) SetupPLLInputSource(clkinInputDivider ClockDivider, pllASource,
 }
 
 // SetupPLLRaw directly sets the frequency multiplier parameters for the given PLL and resets it.
-func (s *Si5351) SetupPLLRaw(pll PLLIndex, a, b, c int) error {
+func (s *Si5351) SetupPLLRaw(pll PLLIndex, a, b, c uint32) error {
 	s.pll[pll].SetupMultiplier(FractionalRatio{A: a, B: b, C: c})
 	s.pll[pll].Reset()
 	return s.bus.Err()
 }
 
 // SetupMultisynthRaw directly sets the frequency divider and RDiv parameters for the Multisynth of the given output.
-func (s *Si5351) SetupMultisynthRaw(output OutputIndex, a, b, c int, RDiv ClockDivider) error {
+func (s *Si5351) SetupMultisynthRaw(output OutputIndex, a, b, c uint32, RDiv ClockDivider) error {
 	if int(output) >= len(s.fractionalOutput) {
 		return errors.New("only CLK0-CLK5 are currently supported")
 	}
@@ -195,7 +195,7 @@ func (s *Si5351) SetOutputFrequency(output OutputIndex, frequency Frequency) (Fr
 
 // SetOutputDivider sets the divider of the given output.
 // The method returns the effective output frequency.
-func (s *Si5351) SetOutputDivider(output OutputIndex, a, b, c int) (Frequency, error) {
+func (s *Si5351) SetOutputDivider(output OutputIndex, a, b, c uint32) (Frequency, error) {
 	if int(output) >= len(s.fractionalOutput) {
 		return 0, errors.New("only CLK0-CLK5 are currently supported")
 	}

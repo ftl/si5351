@@ -10,6 +10,7 @@ import (
 
 var oscFlags = struct {
 	drive  int
+	intDiv bool
 	noInit bool
 }{}
 
@@ -28,34 +29,58 @@ func init() {
 	rootCmd.AddCommand(oscCmd)
 
 	oscCmd.Flags().IntVar(&oscFlags.drive, "drive", 2, "the output drive strength in mA (2, 4, 6, 8)")
+	oscCmd.Flags().BoolVar(&oscFlags.intDiv, "intDiv", false, "use a fractional mutliplier with an integer divider (works only with output Clk0!)")
 	oscCmd.Flags().BoolVar(&oscFlags.noInit, "noInit", false, "do not initialize the Si5351")
 }
 
 func runOsc(cmd *cobra.Command, args []string, device *si5351.Si5351) {
+	refFrequency := device.Crystal.Frequency()
+	log.Printf("Crystal @ %dHz", refFrequency)
+
 	drive := toOutputDrive(oscFlags.drive)
 
 	if !oscFlags.noInit {
 		device.StartSetup()
 	}
 
-	f, _ := device.SetupPLL(si5351.PLLA, 900*si5351.MHz)
-	log.Printf("PLLA @ %dHz", f)
-
-	for i, arg := range args {
-		output := si5351.OutputIndex(i)
-		if output > si5351.Clk5 {
-			break
+	if oscFlags.intDiv {
+		if len(args) != 1 {
+			log.Fatal("intDiv works only with one output")
 		}
-
-		frequency, err := parseFrequency(arg)
+		frequency, err := parseFrequency(args[0])
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		device.PrepareOutputs(si5351.PLLA, false, si5351.ClockInputMultisynth, drive, output)
-		f, _ := device.SetOutputFrequency(output, frequency)
+		multiplier, divider := si5351.FindFractionalMultiplierWithIntegerDivider(refFrequency, frequency)
+		device.PLLA().SetupMultiplier(multiplier)
+		pllFrequency := multiplier.Multiply(refFrequency)
+		log.Printf("PLLA @ %dHz: %v", pllFrequency, multiplier)
 
-		log.Printf("Clk%d @ %dHz", i, f)
+		device.PrepareOutputs(si5351.PLLA, false, si5351.ClockInputMultisynth, drive, si5351.Clk0)
+		device.Clk0().SetupDivider(divider)
+		outputFrequency := divider.Divide(pllFrequency)
+		log.Printf("Clk0 @ %dHz: %v", outputFrequency, divider)
+	} else {
+		f, _ := device.SetupPLL(si5351.PLLA, 900*si5351.MHz)
+		log.Printf("PLLA @ %dHz: %v", f, device.PLLA().Multiplier)
+
+		for i, arg := range args {
+			output := si5351.OutputIndex(i)
+			if output > si5351.Clk5 {
+				break
+			}
+
+			frequency, err := parseFrequency(arg)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			device.PrepareOutputs(si5351.PLLA, false, si5351.ClockInputMultisynth, drive, output)
+			f, _ := device.SetOutputFrequency(output, frequency)
+
+			log.Printf("Clk%d @ %dHz: %v", i, f, device.Clk0().FrequencyDivider)
+		}
 	}
 
 	if !oscFlags.noInit {
