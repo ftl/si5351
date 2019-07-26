@@ -26,13 +26,13 @@ func TestFractionalRatioClockDivider(t *testing.T) {
 
 func TestFindFractionalMultiplier(t *testing.T) {
 	crystal := Crystal{BaseFrequency: Crystal25MHz, CorrectionPPM: 30}
-	for f := 600; f <= 900; f++ {
+	for f := 600; f <= 600; f++ {
 		frequency := Frequency(f) * MHz
-		t.Run(fmt.Sprintf("%d", frequency), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%f", frequency), func(t *testing.T) {
 			t.Parallel()
 			multiplier := FindFractionalMultiplier(crystal.Frequency(), frequency)
 			actual := multiplier.Multiply(crystal.Frequency())
-			assert.True(t, math.Abs(float64(frequency-actual)) < 25, "", actual, multiplier)
+			assert.True(t, math.Abs(float64(frequency-actual)) < 2, "", actual, multiplier, crystal.Frequency())
 		})
 	}
 }
@@ -41,11 +41,11 @@ func TestFindFractionalDivider(t *testing.T) {
 	pllFrequency := 900 * MHz
 	for f := 1000; f <= 15000; f += 10 {
 		frequency := Frequency(f) * KHz
-		t.Run(fmt.Sprintf("%d", frequency), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%f", frequency), func(t *testing.T) {
 			t.Parallel()
 			divider := FindFractionalDivider(pllFrequency, frequency)
 			actual := divider.Divide(pllFrequency)
-			assert.True(t, math.Abs(float64(frequency-actual)) < 9, "", actual)
+			assert.True(t, math.Abs(float64(frequency-actual)) < 1, "", actual)
 		})
 	}
 }
@@ -54,11 +54,11 @@ func TestFindFractionalMultiplierWithIntegerDivider(t *testing.T) {
 	refFrequency := 25 * MHz
 	for f := 1000; f <= 150000; f += 10 {
 		frequency := Frequency(f) * KHz
-		t.Run(fmt.Sprintf("%d", frequency), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%f", frequency), func(t *testing.T) {
 			t.Parallel()
 			multiplier, divider := FindFractionalMultiplierWithIntegerDivider(refFrequency, frequency)
 			actual := divider.Divide(multiplier.Multiply(refFrequency))
-			assert.True(t, math.Abs(float64(frequency-actual)) < 5, "", actual, multiplier, divider)
+			assert.True(t, math.Abs(float64(frequency-actual)) < 4, "", actual, multiplier, divider)
 		})
 	}
 }

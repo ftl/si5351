@@ -5,7 +5,7 @@ import (
 )
 
 // Frequency represents a frequency in Hz
-type Frequency uint32
+type Frequency float64
 
 // Frequency multipliers
 const (
@@ -111,13 +111,15 @@ func FindFractionalMultiplier(refFrequency, frequency Frequency) FractionalRatio
 		defaultDenom = 0xFFFFF // 1048575 // (1 << 21) - 1 // 2000000
 	)
 
-	a := uint32(frequency / refFrequency)
+	q := float64(frequency / refFrequency)
+	a := uint32(q)
+	r := (q - float64(a)) * float64(refFrequency)
 	if a < minA {
 		a = minA
 	} else if a > maxA {
 		a = maxA
 	}
-	b := uint32(float64(frequency%refFrequency) * (float64(defaultDenom) / float64(refFrequency)))
+	b := uint32(r * (float64(defaultDenom) / float64(refFrequency)))
 	c := uint32(defaultDenom)
 
 	return FractionalRatio{A: a, B: b, C: c}
@@ -130,13 +132,15 @@ func FindFractionalDivider(refFrequency Frequency, frequency Frequency) Fraction
 		defaultDenom = 0xFFFFF // 1048575 // (1<<21) - 1 // 2000000
 	)
 
-	a := uint32(refFrequency / frequency)
+	q := float64(refFrequency / frequency)
+	a := uint32(q)
+	r := (q - float64(a)) * float64(frequency)
 	if a < minA {
 		a = minA
 	} else if a > maxA {
 		a = maxA
 	}
-	b := uint32(float64(refFrequency%frequency) * (float64(defaultDenom) / float64(frequency)))
+	b := uint32(r * (float64(defaultDenom) / float64(frequency)))
 	c := uint32(defaultDenom)
 
 	return FractionalRatio{A: a, B: b, C: c}
@@ -151,11 +155,11 @@ func FindFractionalMultiplierWithIntegerDivider(refFrequency Frequency, frequenc
 	)
 
 	pllFrequency := minPLLFreq
-	a := (pllFrequency / frequency)
+	a := uint32(pllFrequency / frequency)
 
-	for pllFrequency%frequency != 0 {
+	for pllFrequency/frequency != Frequency(uint32(pllFrequency/frequency)) {
 		a++
-		pllFrequency = frequency * a
+		pllFrequency = frequency * Frequency(a)
 	}
 	for (a%2 == 1) || (a < minA) {
 		a++
@@ -167,7 +171,7 @@ func FindFractionalMultiplierWithIntegerDivider(refFrequency Frequency, frequenc
 		clockDivider++
 	}
 
-	pllFrequency = frequency * a * Frequency(clockDivider.Factor())
+	pllFrequency = frequency * Frequency(a*uint32(clockDivider.Factor()))
 	multiplier = FindFractionalMultiplier(refFrequency, pllFrequency)
 
 	divider = FractionalRatio{A: uint32(a), B: 0, C: 1, ClockDivider: clockDivider}

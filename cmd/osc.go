@@ -35,7 +35,7 @@ func init() {
 
 func runOsc(cmd *cobra.Command, args []string, device *si5351.Si5351) {
 	refFrequency := device.Crystal.Frequency()
-	log.Printf("Crystal @ %dHz", refFrequency)
+	log.Printf("Crystal @ %.2fHz", refFrequency)
 
 	drive := toOutputDrive(oscFlags.drive)
 
@@ -55,16 +55,16 @@ func runOsc(cmd *cobra.Command, args []string, device *si5351.Si5351) {
 		multiplier, divider := si5351.FindFractionalMultiplierWithIntegerDivider(refFrequency, frequency)
 		device.PLLA().SetupMultiplier(multiplier)
 		pllFrequency := multiplier.Multiply(refFrequency)
-		log.Printf("PLLA @ %dHz: %v", pllFrequency, multiplier)
+		log.Printf("PLLA @ %.2fHz: %v", pllFrequency, multiplier)
 
 		device.PrepareOutputs(si5351.PLLA, false, si5351.ClockInputMultisynth, drive, si5351.Clk0)
 		device.Clk0().SetupDivider(divider)
 		device.Clk0().SetIntegerMode(true)
 		outputFrequency := divider.Divide(pllFrequency)
-		log.Printf("Clk0 @ %dHz: %v", outputFrequency, divider)
+		log.Printf("Clk0 @ %.2fHz: %v", outputFrequency, divider)
 	} else {
 		f, _ := device.SetupPLL(si5351.PLLA, 900*si5351.MHz)
-		log.Printf("PLLA @ %dHz: %v", f, device.PLLA().Multiplier)
+		log.Printf("PLLA @ %.2fHz: %v", f, device.PLLA().Multiplier)
 
 		for i, arg := range args {
 			output := si5351.OutputIndex(i)
@@ -80,7 +80,7 @@ func runOsc(cmd *cobra.Command, args []string, device *si5351.Si5351) {
 			device.PrepareOutputs(si5351.PLLA, false, si5351.ClockInputMultisynth, drive, output)
 			f, _ := device.SetOutputFrequency(output, frequency)
 
-			log.Printf("Clk%d @ %dHz: %v", i, f, device.Clk0().FrequencyDivider)
+			log.Printf("Clk%d @ %.2fHz: %v", i, f, device.Clk0().FrequencyDivider)
 		}
 	}
 

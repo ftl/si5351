@@ -35,6 +35,6 @@ func runTest(cmd *cobra.Command, args []string, device *si5351.Si5351) {
 
 	device.FinishSetup()
 
-	log.Printf("PLLA @ %dHz", fpll)
-	log.Printf("Clk0 @ %dHz", fout)
+	log.Printf("PLLA @ %.2fHz", fpll)
+	log.Printf("Clk0 @ %.2fHz", fout)
 }
