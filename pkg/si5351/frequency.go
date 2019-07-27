@@ -113,13 +113,12 @@ func FindFractionalMultiplier(refFrequency, frequency Frequency) FractionalRatio
 
 	q := float64(frequency / refFrequency)
 	a := uint32(q)
-	r := (q - float64(a)) * float64(refFrequency)
 	if a < minA {
 		a = minA
 	} else if a > maxA {
 		a = maxA
 	}
-	b := uint32(r * (float64(defaultDenom) / float64(refFrequency)))
+	b := uint32((q - float64(a)) * float64(defaultDenom))
 	c := uint32(defaultDenom)
 
 	return FractionalRatio{A: a, B: b, C: c}
@@ -134,13 +133,12 @@ func FindFractionalDivider(refFrequency Frequency, frequency Frequency) Fraction
 
 	q := float64(refFrequency / frequency)
 	a := uint32(q)
-	r := (q - float64(a)) * float64(frequency)
 	if a < minA {
 		a = minA
 	} else if a > maxA {
 		a = maxA
 	}
-	b := uint32(r * (float64(defaultDenom) / float64(frequency)))
+	b := uint32((q - float64(a)) * float64(defaultDenom))
 	c := uint32(defaultDenom)
 
 	return FractionalRatio{A: a, B: b, C: c}
