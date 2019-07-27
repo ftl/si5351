@@ -47,7 +47,7 @@ func runOsc(cmd *cobra.Command, args []string, device *si5351.Si5351) {
 		if len(args) != 1 {
 			log.Fatal("intDiv works only with one output")
 		}
-		frequency, err := ParseFrequency(args[0])
+		frequency, err := parseFrequency(args[0])
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -72,7 +72,7 @@ func runOsc(cmd *cobra.Command, args []string, device *si5351.Si5351) {
 				break
 			}
 
-			frequency, err := ParseFrequency(arg)
+			frequency, err := parseFrequency(arg)
 			if err != nil {
 				log.Fatal(err)
 			}

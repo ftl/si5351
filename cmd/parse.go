@@ -9,7 +9,7 @@ import (
 	"github.com/ftl/si5351/pkg/si5351"
 )
 
-func ParseFrequency(f string) (si5351.Frequency, error) {
+func parseFrequency(f string) (si5351.Frequency, error) {
 	input := strings.ToLower(strings.TrimSpace(f))
 	var magnitude si5351.Frequency
 	switch {
@@ -68,7 +68,7 @@ func parseOutput(s string) (si5351.OutputIndex, error) {
 	return si5351.OutputIndex(i), nil
 }
 
-func ToCrystalFrequency(f int) si5351.Frequency {
+func toCrystalFrequency(f int) si5351.Frequency {
 	switch f {
 	case 27:
 		return si5351.Crystal27MHz
@@ -77,7 +77,7 @@ func ToCrystalFrequency(f int) si5351.Frequency {
 	}
 }
 
-func ToCrystalLoad(l int) si5351.CrystalLoad {
+func toCrystalLoad(l int) si5351.CrystalLoad {
 	switch l {
 	case 6:
 		return si5351.CrystalLoad6PF
