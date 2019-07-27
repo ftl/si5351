@@ -35,7 +35,7 @@ func runQuad(cmd *cobra.Command, args []string, device *si5351.Si5351) {
 	pll, err := parsePLL(args[0])
 	iOutput, err := parseOutput(args[1])
 	qOutput, err := parseOutput(args[2])
-	frequency, err := parseFrequency(args[3])
+	frequency, err := ParseFrequency(args[3])
 	drive := toOutputDrive(quadFlags.drive)
 
 	if err != nil {

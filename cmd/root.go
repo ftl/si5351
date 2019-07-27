@@ -43,7 +43,7 @@ func init() {
 
 func runSi5351(f func(cmd *cobra.Command, args []string, device *si5351.Si5351)) func(cmd *cobra.Command, args []string) {
 	return func(cmd *cobra.Command, args []string) {
-		crystal := si5351.Crystal{BaseFrequency: toCrystalFrequency(rootFlags.crystalFreq), Load: toCrystalLoad(rootFlags.crystalLoad), CorrectionPPM: rootFlags.ppm}
+		crystal := si5351.Crystal{BaseFrequency: ToCrystalFrequency(rootFlags.crystalFreq), Load: ToCrystalLoad(rootFlags.crystalLoad), CorrectionPPM: rootFlags.ppm}
 		bus, err := i2c.Open(rootFlags.address, rootFlags.bus)
 		if err != nil {
 			log.Fatal(err)
